@@ -236,7 +236,143 @@ void Renderer::initRenderer() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // get some demo models into memory
-    createModels();
+    createGameModels();
+}
+
+void Renderer::createGameModels() {
+    // Create models for different game elements
+    
+    // Player model (square)
+    std::vector<Vertex> playerVertices = {
+        Vertex(Vector3{0.1f, 0.1f, 0}, Vector2{0, 0}),
+        Vertex(Vector3{-0.1f, 0.1f, 0}, Vector2{1, 0}),
+        Vertex(Vector3{-0.1f, -0.1f, 0}, Vector2{1, 1}),
+        Vertex(Vector3{0.1f, -0.1f, 0}, Vector2{0, 1})
+    };
+    std::vector<Index> indices = {0, 1, 2, 0, 2, 3};
+    
+    auto assetManager = app_->activity->assetManager;
+    auto spTexture = TextureAsset::loadAsset(assetManager, "android_robot.png");
+    
+    models_.emplace_back(playerVertices, indices, spTexture);
+    
+    // Platform model (rectangle)
+    std::vector<Vertex> platformVertices = {
+        Vertex(Vector3{1.0f, 0.1f, 0}, Vector2{0, 0}),
+        Vertex(Vector3{-1.0f, 0.1f, 0}, Vector2{1, 0}),
+        Vertex(Vector3{-1.0f, -0.1f, 0}, Vector2{1, 1}),
+        Vertex(Vector3{1.0f, -0.1f, 0}, Vector2{0, 1})
+    };
+    
+    models_.emplace_back(platformVertices, indices, spTexture);
+    
+    // Obstacle model (triangle/spike)
+    std::vector<Vertex> obstacleVertices = {
+        Vertex(Vector3{0.0f, 0.15f, 0}, Vector2{0.5f, 0}),
+        Vertex(Vector3{-0.15f, -0.15f, 0}, Vector2{0, 1}),
+        Vertex(Vector3{0.15f, -0.15f, 0}, Vector2{1, 1})
+    };
+    std::vector<Index> obstacleIndices = {0, 1, 2};
+    
+    models_.emplace_back(obstacleVertices, obstacleIndices, spTexture);
+}
+
+void Renderer::renderGame() {
+    if (!game_ || game_->isGameComplete()) return;
+    
+    const auto& player = game_->getPlayer();
+    const auto& level = game_->getCurrentLevel();
+    
+    // Render platforms
+    for (const auto& platform : level.platforms) {
+        renderPlatform(platform);
+    }
+    
+    // Render obstacles
+    for (const auto& obstacle : level.obstacles) {
+        renderObstacle(obstacle);
+    }
+    
+    // Render player
+    if (player.alive) {
+        renderPlayer(player);
+    }
+    
+    // Render end goal
+    renderEndGoal(level.endPosition);
+}
+
+void Renderer::renderPlayer(const Player& player) {
+    if (models_.empty()) return;
+    
+    // Save current matrix state (in a real implementation)
+    // Translate to player position and scale
+    // For now, we'll modify the vertex data directly
+    
+    std::vector<Vertex> vertices = {
+        Vertex(Vector3{player.position.x + player.size.x/2, player.position.y + player.size.y/2, 0}, Vector2{0, 0}),
+        Vertex(Vector3{player.position.x - player.size.x/2, player.position.y + player.size.y/2, 0}, Vector2{1, 0}),
+        Vertex(Vector3{player.position.x - player.size.x/2, player.position.y - player.size.y/2, 0}, Vector2{1, 1}),
+        Vertex(Vector3{player.position.x + player.size.x/2, player.position.y - player.size.y/2, 0}, Vector2{0, 1})
+    };
+    std::vector<Index> indices = {0, 1, 2, 0, 2, 3};
+    
+    auto assetManager = app_->activity->assetManager;
+    auto spTexture = TextureAsset::loadAsset(assetManager, "android_robot.png");
+    Model playerModel(vertices, indices, spTexture);
+    
+    shader_->drawModel(playerModel);
+}
+
+void Renderer::renderPlatform(const Platform& platform) {
+    std::vector<Vertex> vertices = {
+        Vertex(Vector3{platform.position.x + platform.size.x/2, platform.position.y + platform.size.y/2, 0}, Vector2{0, 0}),
+        Vertex(Vector3{platform.position.x - platform.size.x/2, platform.position.y + platform.size.y/2, 0}, Vector2{1, 0}),
+        Vertex(Vector3{platform.position.x - platform.size.x/2, platform.position.y - platform.size.y/2, 0}, Vector2{1, 1}),
+        Vertex(Vector3{platform.position.x + platform.size.x/2, platform.position.y - platform.size.y/2, 0}, Vector2{0, 1})
+    };
+    std::vector<Index> indices = {0, 1, 2, 0, 2, 3};
+    
+    auto assetManager = app_->activity->assetManager;
+    auto spTexture = TextureAsset::loadAsset(assetManager, "android_robot.png");
+    Model platformModel(vertices, indices, spTexture);
+    
+    shader_->drawModel(platformModel);
+}
+
+void Renderer::renderObstacle(const Obstacle& obstacle) {
+    if (obstacle.isSpike) {
+        // Render as triangle
+        std::vector<Vertex> vertices = {
+            Vertex(Vector3{obstacle.position.x, obstacle.position.y + obstacle.size.y/2, 0}, Vector2{0.5f, 0}),
+            Vertex(Vector3{obstacle.position.x - obstacle.size.x/2, obstacle.position.y - obstacle.size.y/2, 0}, Vector2{0, 1}),
+            Vertex(Vector3{obstacle.position.x + obstacle.size.x/2, obstacle.position.y - obstacle.size.y/2, 0}, Vector2{1, 1})
+        };
+        std::vector<Index> indices = {0, 1, 2};
+        
+        auto assetManager = app_->activity->assetManager;
+        auto spTexture = TextureAsset::loadAsset(assetManager, "android_robot.png");
+        Model obstacleModel(vertices, indices, spTexture);
+        
+        shader_->drawModel(obstacleModel);
+    }
+}
+
+void Renderer::renderEndGoal(const Vector3& position) {
+    // Render end goal as a larger square
+    std::vector<Vertex> vertices = {
+        Vertex(Vector3{position.x + 0.3f, position.y + 0.3f, 0}, Vector2{0, 0}),
+        Vertex(Vector3{position.x - 0.3f, position.y + 0.3f, 0}, Vector2{1, 0}),
+        Vertex(Vector3{position.x - 0.3f, position.y - 0.3f, 0}, Vector2{1, 1}),
+        Vertex(Vector3{position.x + 0.3f, position.y - 0.3f, 0}, Vector2{0, 1})
+    };
+    std::vector<Index> indices = {0, 1, 2, 0, 2, 3};
+    
+    auto assetManager = app_->activity->assetManager;
+    auto spTexture = TextureAsset::loadAsset(assetManager, "android_robot.png");
+    Model goalModel(vertices, indices, spTexture);
+    
+    shader_->drawModel(goalModel);
 }
 
 void Renderer::updateRenderArea() {
@@ -318,6 +454,14 @@ void Renderer::handleInput() {
             case AMOTION_EVENT_ACTION_POINTER_DOWN:
                 aout << "(" << pointer.id << ", " << x << ", " << y << ") "
                      << "Pointer Down";
+                
+                // Convert screen coordinates to game coordinates
+                float gameX = (x / width_) * 4.0f - 2.0f; // Convert to -2 to 2 range
+                float gameY = 2.0f - (y / height_) * 4.0f; // Convert to -2 to 2 range, flip Y
+                
+                if (game_) {
+                    game_->handleInput(gameX, gameY, true);
+                }
                 break;
 
             case AMOTION_EVENT_ACTION_CANCEL:
@@ -328,6 +472,10 @@ void Renderer::handleInput() {
             case AMOTION_EVENT_ACTION_POINTER_UP:
                 aout << "(" << pointer.id << ", " << x << ", " << y << ") "
                      << "Pointer Up";
+                
+                if (game_) {
+                    game_->handleInput(0, 0, false);
+                }
                 break;
 
             case AMOTION_EVENT_ACTION_MOVE:
@@ -360,9 +508,37 @@ void Renderer::handleInput() {
         switch (keyEvent.action) {
             case AKEY_EVENT_ACTION_DOWN:
                 aout << "Key Down";
+                
+                // Handle keyboard input for testing
+                if (game_) {
+                    switch (keyEvent.keyCode) {
+                        case AKEYCODE_DPAD_LEFT:
+                        case AKEYCODE_A:
+                            game_->handleInput(-1.0f, 0.0f, true);
+                            break;
+                        case AKEYCODE_DPAD_RIGHT:
+                        case AKEYCODE_D:
+                            game_->handleInput(1.0f, 0.0f, true);
+                            break;
+                        case AKEYCODE_SPACE:
+                        case AKEYCODE_DPAD_UP:
+                        case AKEYCODE_W:
+                            game_->handleInput(0.0f, 1.0f, true);
+                            break;
+                        case AKEYCODE_R:
+                            if (game_->isPlayerDead()) {
+                                game_->restartLevel();
+                            }
+                            break;
+                    }
+                }
                 break;
             case AKEY_EVENT_ACTION_UP:
                 aout << "Key Up";
+                
+                if (game_) {
+                    game_->handleInput(0.0f, 0.0f, false);
+                }
                 break;
             case AKEY_EVENT_ACTION_MULTIPLE:
                 // Deprecated since Android API level 29.

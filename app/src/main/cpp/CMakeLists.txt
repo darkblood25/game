@@ -10,6 +10,7 @@ project("bolas")
 add_library(bolas SHARED
         main.cpp
         AndroidOut.cpp
+        Game.cpp
         Renderer.cpp
         Shader.cpp
         TextureAsset.cpp

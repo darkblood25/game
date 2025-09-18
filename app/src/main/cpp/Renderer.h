@@ -6,6 +6,7 @@
 
 #include "Model.h"
 #include "Shader.h"
+#include "Game.h"
 
 struct android_app;
 
@@ -57,6 +58,12 @@ private:
      * use some other setup logic in your full game.
      */
     void createModels();
+    void createGameModels();
+    void renderGame();
+    void renderPlayer(const Player& player);
+    void renderPlatform(const Platform& platform);
+    void renderObstacle(const Obstacle& obstacle);
+    void renderEndGoal(const Vector3& position);
 
     android_app *app_;
     EGLDisplay display_;
@@ -69,6 +76,8 @@ private:
 
     std::unique_ptr<Shader> shader_;
     std::vector<Model> models_;
+    std::unique_ptr<Game> game_;
+    float lastFrameTime_;
 };
 
 #endif //ANDROIDGLINVESTIGATIONS_RENDERER_H
